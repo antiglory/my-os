@@ -37,7 +37,6 @@ _start:
     mov ds, ax
     mov es, ax
 
-    ; far jump to prekernel (a far cuz CPU pipeline need to be cleaned before jumping)
     jmp 0x1000:0x0000
 
 ; system simple print not formatted
