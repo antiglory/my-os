@@ -22,7 +22,7 @@ prekernel:
 
 [BITS 32]
 
-    ; far jump pro protected mode (far to clean CPU pipeline)
+    ; far jump to protected mode (far to clean CPU pipeline)
     jmp CODE_S:protected_mode
 
 protected_mode:
@@ -72,8 +72,8 @@ gdt_data:
 gdt_end:
 
 gdt_d:
-    dw gdt_end - gdt_start      ; tamanho da GDT
-    dd gdt_start                ; address da GDT
+    dw gdt_end - gdt_start      ; GDT size
+    dd gdt_start                ; GDT address
 
 CODE_S equ gdt_code - gdt_start
 DATA_S equ gdt_data - gdt_start
