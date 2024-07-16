@@ -1,3 +1,10 @@
+; -> bootloader loada o prekernel | OK
+; -> prekernel inicializa a GDT e a IDT
+; -> prekernel entra no modo protegido
+; -> prekernel carrega o kernel na memoria em endereços altos pq ta no modo protegido (precisa criar a propria funcao pra mandar informacoes pro disco, como se fosse um pequeno driver, pq n tem mais BIOS interrupt)
+; -> prekernel carrega modo longo com uma paginação provisória (em certo modo, uma unica entrada na PML4 pra abranger apenas os primeiros 1GB de memoria, e tudo self-paged, ou seja, endereço fisico = endereço virtual, pra facilitar)
+; -> ai jumpa pro kernel e a partir de lá, em C, consigo criar uma paginação completa pro kernel e posteriormente PML4 de cada processo q vai ser criado
+
 [BITS 16]
 [ORG 0x7C00]
 
