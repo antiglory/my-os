@@ -22,7 +22,7 @@ prekernel:
 
 [BITS 32]
 
-    ; far jump pro protected mode (far pra limpar a pipeline da CPU)
+    ; far jump pro protected mode (far to clean CPU pipeline)
     jmp CODE_S:protected_mode
 
 protected_mode:
