@@ -5,41 +5,48 @@
 ; -> prekernel carrega modo longo com uma paginação provisória (em certo modo, uma unica entrada na PML4 pra abranger apenas os primeiros 1GB de memoria, e tudo self-paged, ou seja, endereço fisico = endereço virtual, pra facilitar)
 ; -> ai jumpa pro kernel e a partir de lá, em C, consigo criar uma paginação completa pro kernel e posteriormente PML4 de cada processo q vai ser criado
 
+; _s: selector
+; _d: descriptor
+
 [BITS 16]
-[ORG 0x7C00]
 
-_start:
-    cli
-
-    xor ax, ax
+prekernel:
+    mov ax, cs
     mov ds, ax
     mov es, ax
     mov ss, ax
-    mov sp, 0x7C00
+    mov sp, 0xFFFE
 
-    ; prekernel loading
-    mov ah, 0x02      ; disk read function ID
-    mov al, 1         ; block num to read
-    mov ch, 0         ; cilinder 0
-    mov cl, 2         ; block 2 (prekernel) (bootloader is at block 1)
-    mov dh, 0         ; head 0
-    mov dl, 0x80      ; drive 0x80 (first hard disk)
-    mov bx, 0x1000    ; segment which prekernel will be loaded
-    mov es, bx
-    xor bx, bx        ; offset 0 inside segment
-    int 0x13
-    jc disk_error
-
-    mov si, PREKERNEL_INFO_SUCC_LOADED
+    mov si, PREKERNEL_INFO_REACHED
     call ssprintnf
 
-    mov ax, 0x1000
+    lgdt [gdt_d]
+
+    ; enabling protected mode
+    mov eax, cr0
+    or eax, 1
+    mov cr0, eax
+
+[BITS 32]
+
+    ; far jump to protected mode (far to clean CPU pipeline)
+    jmp CODE_S:protected_mode
+
+protected_mode:
+    ; setando os segmentos
+    mov ax, DATA_S
     mov ds, ax
+    mov ss, ax
     mov es, ax
+    mov fs, ax
+    mov gs, ax
+    mov esp, 0x90000 ; (stack)
 
-    jmp 0x1000:0x0000
+    hlt
 
-; system simple print not formatted
+[BITS 16]
+
+; simple system print not formatted (duplicated)
 ; arguments:
 ;   SI = pointer to the string
 ssprintnf:
@@ -52,23 +59,30 @@ ssprintnf:
 .d:
     ret
 
-disk_error:
-    sti
+; GDT
+gdt_start:
+    dq 0x0          ; null selector
+gdt_code:
+    dw 0xFFFF       ; limit (bits 0-15) (64kb - 1 byte)
+    dw 0x0          ; base (bits 0-15) (segment start at address 0)
+    db 0x0          ; base (bits 16-23) (segment start at address 0)
+    db 10011010b    ; access flags (present segment, ring 0, bd 1, type 0, direction 0, wp 1, ab 0)
+    db 11001111b    ; limit & flags (bits 16-19) (granularity 1, op size 1, always 0, limit 1111)
+    db 0x0          ; base (bits 24-31) (fill the base address)
+gdt_data:
+    dw 0xFFFF       ; limit (bits 0-15) (64kb - 1 byte)
+    dw 0x0          ; base (bits 0-15) (segment start at address 0)
+    db 0x0          ; base (bits 16-23) (segment start at address 0)
+    db 10010010b    ; access flags (present segment, ring 0, bd 1, type 0, direction 0, wp 1, ab 0)
+    db 11001111b    ; limit & flags (bits 16-19) (granularity 1, op size 1, always 0, limit 1111)
+    db 0x0          ; base (bits 24-31) (fill the address)
+gdt_end:
 
-    mov si, DISK_ERROR_LOAD
-    call ssprintnf
+gdt_d:
+    dw gdt_end - gdt_start      ; GDT size
+    dd gdt_start                ; GDT address
 
-    xor si, si
+CODE_S equ gdt_code - gdt_start
+DATA_S equ gdt_data - gdt_start
 
-    mov si, DISK_ERROR_HALT
-    call ssprintnf
-
-    hlt
-
-DISK_ERROR_LOAD            db "[ ERROR ] cannot load prekernel at block 2",           0x0D, 0x0A, 0x0
-DISK_ERROR_HALT            db "[ WARN ] no IDT has been initialized, boot was trunk", 0X0D, 0X0A, 0x0
-
-PREKERNEL_INFO_SUCC_LOADED db "[ INFO ] sucessfully loaded prekernel at block 2",     0x0D, 0x0A, 0x0
-
-times 510-($-$$) db 0
-dw 0xAA55
+PREKERNEL_INFO_REACHED db "[ INFO ] prekernel was reached", 0x0D, 0x0A, 0x0
