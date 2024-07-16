@@ -20,13 +20,14 @@ prekernel:
     or eax, 1
     mov cr0, eax
 
+    hlt ; i'll halt at this point because protected mode jmp is currently broken
+
 [BITS 32]
 
     ; far jump to protected mode (far to clean CPU pipeline)
     jmp CODE_S:protected_mode
 
 protected_mode:
-    ; setando os segmentos
     mov ax, DATA_S
     mov ds, ax
     mov ss, ax
@@ -72,8 +73,8 @@ gdt_data:
 gdt_end:
 
 gdt_d:
-    dw gdt_end - gdt_start      ; GDT size
-    dd gdt_start                ; GDT address
+    dw gdt_end - gdt_start   ; GDT size
+    dd gdt_start             ; GDT address
 
 CODE_S equ gdt_code - gdt_start
 DATA_S equ gdt_data - gdt_start
