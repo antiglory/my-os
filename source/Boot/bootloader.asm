@@ -36,10 +36,12 @@
 ;     mov si, DISK_ERROR_HALT
 ;     call ssprintnf
 ;
-;    hlt
+;     hlt
 
 ; DISK_ERROR_LOAD            db "[ ERROR ] cannot load prekernel at block 2",            0x0D, 0x0A, 0x0
 ; DISK_ERROR_HALT            db "[ WARN ] no IDT has been initialized, boot has been trunk",  0X0D, 0X0A, 0x0
+
+; PREKERNEL_INFO_SUCC_LOADED db "[ INFO ] sucessfully loaded prekernel at block 2",  0x0D, 0x0A, 0x0
 
 %include "../Struct/gdt32.asm"
 [BITS 16]
@@ -131,10 +133,7 @@ ssprintnf:
     ret
 
 ENTRYP_INFO_LOADED_GDT     db "[ INFO ] 32-bit GDT is alive",               0x0D, 0x0A, 0x0
-
 PM_INFO_ALIVE              db "[ INFO ] EUREKA!",   0x0D, 0x0A, 0x0
-
-PREKERNEL_INFO_SUCC_LOADED db "[ INFO ] sucessfully loaded prekernel at block 2",  0x0D, 0x0A, 0x0
 
 times 510-($-$$) db 0
 dw 0xAA55
