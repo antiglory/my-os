@@ -94,6 +94,8 @@ protected_mode:
 
     hlt
 
+    ; TODO: agora tem que carregar o prekernel no setor 2 em diante e far jumpar pra ele
+
 bmmap:
     pusha
 
