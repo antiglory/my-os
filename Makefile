@@ -1,25 +1,24 @@
 # tools
 NASM = nasm
 DD = dd
+LD = ld
 CAT = cat
 GCC = gcc
 GPP = g++
 
 # input
 BOOTLOADER = source/Boot/bootloader.asm
-PREKERNEL_IN = source/Kernel/prekernel.c
-KERNEL_IN = source/Kernel/kernel.cpp
+PREKERNEL_IN = source/Kernel/prekernel.cpp
 
 # output
 BOOTLOADER_OUT = output/bootloader.bin
+PREKERNEL_OBJ = output/prekernel.o
 PREKERNEL_OUT = output/prekernel.bin
-KERNEL_OUT = output/kernel.bin
 OS_IMAGE = output/os.img
 
 # compile-flags
 NASM_FLAGS = -f bin
-GCC_PREKERNEL_FLAGS = -o $(PREKERNEL_OUT) -static $(PREKERNEL_IN)
-GPP_KERNEL_FLAGS = -o $(KERNEL_OUT) $(KERNEL_IN)
+PREKERNEL_FLAGS = -g -c -ffreestanding -fno-pie -mno-red-zone -mno-mmx -mno-sse -mno-sse2 -m32 -O2 -fno-exceptions
 
 # rule
 all: $(OS_IMAGE)
@@ -29,17 +28,21 @@ $(BOOTLOADER_OUT): $(BOOTLOADER)
 	$(NASM) $(NASM_FLAGS) $< -o $@
 
 # prekernel compilation
-$(PREKERNEL_OUT): $(PREKERNEL_IN)
-	$(GCC) $(GCC_PREKERNEL_FLAGS)
+$(PREKERNEL_OBJ): $(PREKERNEL_IN)
+	$(GPP) $(PREKERNEL_FLAGS) $< -o $@
 
-# OS image linking
+# prekernel linking
+$(PREKERNEL_OUT): $(PREKERNEL_OBJ)
+	$(LD) -o $@ -Ttext 0x1000 $< --entry=main --oformat binary -m elf_i386
+
+# OS image creation
 $(OS_IMAGE): $(BOOTLOADER_OUT) $(PREKERNEL_OUT)
 	$(DD) if=/dev/zero of=$(OS_IMAGE) bs=512 count=2880
 	$(DD) if=$(BOOTLOADER_OUT) of=$(OS_IMAGE) conv=notrunc
 	$(DD) if=$(PREKERNEL_OUT) of=$(OS_IMAGE) bs=512 seek=1 conv=notrunc
 
 clean:
-	rm -f $(BOOTLOADER_OUT) $(PREKERNEL_OUT) $(OS_IMAGE)
+	rm -f $(BOOTLOADER_OUT) $(PREKERNEL_OBJ) $(PREKERNEL_OUT) $(OS_IMAGE)
 
 run: $(OS_IMAGE)
 	qemu-system-x86_64 -drive format=raw,file=$(OS_IMAGE)
