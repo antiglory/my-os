@@ -9,7 +9,7 @@
 [BITS 16]
 [ORG 0x7C00]
 
-PREKERNEL_OFFSET equ 0x1000
+PREKERNEL_ENTRY equ 0x1000
 
 mov [BOOT_DISK], dl
 
@@ -27,7 +27,7 @@ _start:
     mov sp, bp
 
     ; loading prekernel into block 2
-    mov bx, PREKERNEL_OFFSET
+    mov bx, PREKERNEL_ENTRY
     mov dh, 2
     mov ah, 0x02
     mov al, dh 
@@ -71,7 +71,7 @@ protected_mode:
     mov bp, 0x1000
     mov sp, bp
 
-    jmp PREKERNEL_OFFSET
+    jmp PREKERNEL_ENTRY
 
 BOOT_DISK: db 0
 
