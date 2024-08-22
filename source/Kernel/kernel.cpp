@@ -1,1 +1,1 @@
-// TODO (depois q corrigir o problema do far jmp pro protected mode no prekernel)
+// TODO
