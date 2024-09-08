@@ -28,18 +28,18 @@ _start:
 
     ; loading prekernel into block 2
     mov bx, PREKERNEL_ENTRY
-    mov dh, 2
+    mov dh, 12               ; 12 blocks to read (6144 bytes, prekernel is big)
     mov ah, 0x02
     mov al, dh 
     mov ch, 0x00
     mov dh, 0x00
     mov cl, 0x02
-    mov dl, [BOOT_DISK]     ; no disk error handler, TODO
+    mov dl, [BOOT_DISK]      ; no disk error handler, TODO
     int 0x13        
 
     mov ah, 0x0
     mov al, 0x3
-    int 0x10                ; text mode
+    int 0x10                 ; text mode
 
     ; setup GDT
     lgdt [GDT32.descriptor]
