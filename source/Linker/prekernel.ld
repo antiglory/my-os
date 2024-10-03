@@ -12,4 +12,8 @@ SECTIONS
     .rodata : { *(.rodata) }
     .data : { *(.data) }
     .bss : { *(.bss) }
+
+    . = ALIGN(512);
+
+    __prekernel_end = .;
 }
