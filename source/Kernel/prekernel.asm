@@ -85,8 +85,8 @@ setup_paging:
 KERNEL_PHYSICAL_ADDRESS equ 0x100000
 KERNEL_VIRTUAL_ADDRESS  equ 0xFFFFFFFF80100000
 
-KERNEL_SECTOR_START equ 8
-KERNEL_SECTOR_COUNT equ 8
+KERNEL_BLOCK_START equ 8
+KERNEL_BLOCK_COUNT equ 8
 
 [BITS 64]
 ; 0x10e1
@@ -99,8 +99,8 @@ end:
 ; 0x10f3
 load_kernel:
     mov edi, KERNEL_PHYSICAL_ADDRESS  ; target address
-    mov eax, KERNEL_SECTOR_START      ; starting block
-    mov ecx, KERNEL_SECTOR_COUNT      ; block num to read
+    mov eax, KERNEL_BLOCK_START       ; starting block
+    mov ecx, KERNEL_BLOCK_COUNT       ; block num to read
 .read_loop:
     push rcx
     push rax
@@ -110,7 +110,7 @@ load_kernel:
     mov al, 0xE0  ; LBA mode, primary drive
     out dx, al
 
-    ; set sector count
+    ; set block count
     mov dx, 0x1F2
     mov al, 1
     out dx, al
@@ -130,7 +130,7 @@ load_kernel:
 
     ; send read command
     mov dx, 0x1F7
-    mov al, 0x20  ; read sectors command
+    mov al, 0x20  ; read blocks command
     out dx, al
 
     ; wait for the disk (with timeout)
