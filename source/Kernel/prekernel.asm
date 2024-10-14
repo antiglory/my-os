@@ -82,6 +82,19 @@ setup_paging:
     add eax, PAGE_SIZE
     loop .setup_pt
 
+    ; modify the page table setup for the kernel
+    mov edi, pt_tables
+    mov eax, KERNEL_PHYSICAL_ADDRESS
+    or eax, PTE_PRESENT | PTE_WRITABLE
+    
+    ; calculate the offset in the page tables for the kernels virtual address
+    mov ecx, KERNEL_VIRTUAL_ADDRESS
+    shr ecx, 12     ; divide by 4096 (page size)
+    and ecx, 0x1FF  ; get the offset within the page table (9 bits)
+    
+    ; setup the page table entry for the kernel
+    mov [edi + ecx * 8], eax  ; each entry is 8 bytes
+
 KERNEL_PHYSICAL_ADDRESS equ 0x100000
 KERNEL_VIRTUAL_ADDRESS  equ 0xFFFFFFFF80100000
 
@@ -89,12 +102,14 @@ KERNEL_BLOCK_START equ 8
 KERNEL_BLOCK_COUNT equ 8
 
 [BITS 64]
-; 0x10e1
+; 0x10dd
 end:
+    mov rsp, stack_top
+    mov rbp, rsp
+    
     call load_kernel
 
-    mov rax, KERNEL_PHYSICAL_ADDRESS
-    jmp rax
+    jmp KERNEL_PHYSICAL_ADDRESS
 
 ; 0x10f3
 load_kernel:
@@ -194,3 +209,8 @@ pml4_table resb PAGE_SIZE
 pdpt_table resb PAGE_SIZE
 pd_table   resb PAGE_SIZE
 pt_tables  resb 512 * PAGE_SIZE
+
+align 16
+stack_bottom:
+    resb 4096
+stack_top:
