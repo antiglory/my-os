@@ -1,11 +1,27 @@
 void _start() __attribute__((section(".text.boot"))) __attribute__((naked));
 
-void _start()
+void halt()
 {
     asm volatile (
-        "mov $0xB8000, %rax \n\t"
-        "movw $0x1F4B, (%rax) \n\t"
+        "hlt \n\t"
     );
 
-    while (1);
+    return; // ?
+}
+
+// kernel print not formatted
+void kprintnf(unsigned char* str) {
+    unsigned short* vmem = (unsigned short*)0xB8000;
+    unsigned short ref = 0x1F00;
+
+    for (char i = 0; str[i] != '\0'; i++) {
+        vmem[i] = (ref | str[i]);
+    }
+}
+
+void _start()
+{
+    kprintnf("a l i v e");
+
+    halt();
 }
