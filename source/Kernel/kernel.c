@@ -1,13 +1,15 @@
-void _kstart()   __attribute__((section(".text.boot"))) __attribute__((naked));
-void halt()      __attribute__((noreturn));
+void _kstart()  __attribute__((section(".text.boot"))) __attribute__((naked));
+void halt()     __attribute__((noreturn));
 
 extern char __stack_start[];
 extern char __stack_end[];
 
 void halt()
 {
-    while(1) {
-        asm volatile (
+    while(1)
+    {
+        asm volatile
+        (
             "cli\n\t"
             "hlt\n\t"
         );
@@ -18,9 +20,10 @@ void halt()
 void kprintnf(unsigned char* str)
 {
     unsigned short* vmem = (unsigned short*)0xFFFFFF80000B8000; // canonical form of VGA mem
-    unsigned short  ref = 0x1F00;
+    unsigned short  ref  = 0x1F00;
 
-    for (char i = 0; str[i] != '\0'; i++) {
+    for (char i = 0; str[i] != '\0'; i++)
+    {
         vmem[i] = (ref | str[i]);
     }
 }
@@ -29,7 +32,8 @@ void kprintnf(unsigned char* str)
 void _kstart()
 {
     // setup stack
-    asm volatile (
+    asm volatile
+    (
         "movq %0, %%rax\n\t"
         "movq %%rax, %%rsp\n\t"
         "movq %%rsp, %%rbp\n\t"
