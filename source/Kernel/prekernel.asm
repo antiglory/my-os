@@ -1,7 +1,7 @@
-global start
+global _pstart
 
 ; 0x1000
-start:
+_pstart:
     ; setup page table
     call setup_paging
 
@@ -164,7 +164,7 @@ load_kernel:
     loop .wait_disk
 
     ; if we get here, weve timed out
-    mov rdi, DISK_ERROR
+    mov rdi, DISK_ERROR_MSG
     call pkprintnf
 
     hlt
