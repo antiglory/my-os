@@ -1,4 +1,4 @@
-ENTRY(start)
+ENTRY(_pstart)
 SECTIONS
 {
     . = 0x1000;
@@ -9,9 +9,6 @@ SECTIONS
     }
 
     .text.start : { *(.text.start) }
-    .rodata : { *(.rodata) }
-    .data : { *(.data) }
-    .bss : { *(.bss) }
 
     . = ALIGN(512);
 
