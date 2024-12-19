@@ -1,9 +1,7 @@
 global start
 
+; 0x1000
 start:
-    ; state:
-    ; running at 0x1000
-
     ; setup page table
     call setup_paging
 
@@ -41,88 +39,97 @@ start:
 
     jmp GDT64.code_ptr:end
 
-setup_paging:
-    ; state:
-    ; running at 0x1051
+%include "source/Struct/gdt64.asm"
 
+setup_paging:
+    ; PML4 entries
     mov edi, pml4_table
     mov eax, pdpt_table
-    and eax, 0xFFFFF000 ; zeroing reserved bits
-    or eax, PTE_PRESENT | PTE_WRITABLE | PTE_USER
-    mov ecx, 512  ; entry num in PML4
-.setup_pml4:
+    or eax, PTE_PRESENT | PTE_WRITABLE
+    mov [edi], eax                    ; entry 0 - lower addresses
+    
+    mov edi, pml4_table + (511 * 8)   ; entry 511 - high addresses
+    mov eax, pdpt_table
+    or eax, PTE_PRESENT | PTE_WRITABLE
     mov [edi], eax
-    add edi, 8
-    loop .setup_pml4
 
-    mov edi, pdpt_table
+    ; PDPT entries
+    mov edi, pdpt_table              ; entry 0 - lower addresses
     mov eax, pd_table
-    and eax, 0xFFFFF000 ; zeroing reserved bits
-    or eax, PTE_PRESENT | PTE_WRITABLE | PTE_USER
-    mov ecx, 512  ; entry num in PDPT
-.setup_pdpt:
-    mov [edi], eax
-    add edi, 8
-    loop .setup_pdpt
+    or eax, PTE_PRESENT | PTE_WRITABLE
+    mov [edi], eax      
 
+    mov edi, pdpt_table + (511 * 8)  ; entry 511 - high addresses
+    mov eax, pd_table
+    or eax, PTE_PRESENT | PTE_WRITABLE
+    mov [edi], eax
+
+    ; PD entries
     mov edi, pd_table
     mov eax, pt_tables
-    or eax, PTE_PRESENT | PTE_WRITABLE | PTE_USER
-    mov ecx, 512  ; entry num in PD
-.setup_pd:
-    ; PTs (128GB map)
+    or eax, PTE_PRESENT | PTE_WRITABLE
+    mov [edi], eax      
+
+    ; PT entries for kernel space
     mov edi, pt_tables
-    xor eax, eax ; starting from physical address 0x0
-    mov ecx, 65536  ; 128 * 512 entry
+    mov eax, KERNEL_PHYSICAL_ADDRESS 
+    mov ecx, 512        
 .setup_pt:
-    and eax, 0xFFFFF000 ; zeroing reserved bits
-    or eax, PTE_PRESENT | PTE_WRITABLE | PTE_USER
+    or eax, PTE_PRESENT | PTE_WRITABLE
+    mov [edi], eax
+    add edi, 8          
+    add eax, PAGE_SIZE  
+    loop .setup_pt
+
+    ; PT entries for lower memory
+    mov edi, pt_tables
+    xor eax, eax        
+    mov ecx, 256        
+.setup_lower_pt:
+    or eax, PTE_PRESENT | PTE_WRITABLE
     mov [edi], eax
     add edi, 8
     add eax, PAGE_SIZE
-    loop .setup_pt
+    loop .setup_lower_pt
 
-    ; modify the page table setup for the kernel
-    mov edi, pt_tables
-    mov eax, KERNEL_PHYSICAL_ADDRESS
-    or eax, PTE_PRESENT | PTE_WRITABLE
-    
-    ; calculate the offset in the page tables for the kernels virtual address
-    mov ecx, KERNEL_VIRTUAL_ADDRESS
-    shr ecx, 12     ; divide by 4096 (page size)
-    and ecx, 0x1FF  ; get the offset within the page table (9 bits)
-    
-    ; setup the page table entry for the kernel
-    mov [edi + ecx * 8], eax  ; each entry is 8 bytes
+    ret
 
 KERNEL_PHYSICAL_ADDRESS equ 0x100000
-KERNEL_VIRTUAL_ADDRESS  equ 0xFFFFFFFF80100000
+KERNEL_VIRTUAL_ADDRESS  equ 0xFFFF800000100000
 
 KERNEL_BLOCK_START equ 8
 KERNEL_BLOCK_COUNT equ 8
 
 [BITS 64]
-; 0x10dd
 end:
-    mov rsp, stack_top
-    mov rbp, rsp
-    
     call load_kernel
 
-    jmp KERNEL_PHYSICAL_ADDRESS
+    mov rdi, [KERNEL_PHYSICAL_ADDRESS]
+    mov rsi, [KERNEL_VIRTUAL_ADDRESS]
+    cmp rdi, rsi
+    jne .me_handler
 
-; 0x10f3
+    xor rsi, rsi
+    xor rdi, rdi
+    
+    jmp KERNEL_VIRTUAL_ADDRESS
+.me_handler:
+    mov rsi, MAP_ERROR_MSG
+    call pkprintnf
+
+    hlt
+
 load_kernel:
-    mov edi, KERNEL_PHYSICAL_ADDRESS  ; target address
-    mov eax, KERNEL_BLOCK_START       ; starting block
-    mov ecx, KERNEL_BLOCK_COUNT       ; block num to read
+    mov rdi, KERNEL_PHYSICAL_ADDRESS  ; target address
+    mov rax, KERNEL_BLOCK_START       ; starting block
+    mov rcx, KERNEL_BLOCK_COUNT       ; block num to read
 .read_loop:
     push rcx
     push rax
 
-    ; select the primary bus
+    ; select the first bus
     mov dx, 0x1F6
-    mov al, 0xE0  ; LBA mode, primary drive
+    mov al, 0xE0  ; LBA mode, first drive
     out dx, al
 
     ; set block count
@@ -193,10 +200,8 @@ pkprintnf:
 .e:
     ret
 
-DISK_ERROR            db "[ ERROR ] disk read for kernel timeout",          0x0
-
-; 0x1e4 (484 bytes from start)
-%include "source/Struct/gdt64.asm"
+DISK_ERROR_MSG  db "[ ERROR ] disk read for kernel timeout!", 0x0
+MAP_ERROR_MSG   db "[ ERROR ] failed to setup kernel PLM4!", 0x0
 
 PAGE_SIZE         equ 4096
 ENTRIES_PER_TABLE equ 512
@@ -209,8 +214,3 @@ pml4_table resb PAGE_SIZE
 pdpt_table resb PAGE_SIZE
 pd_table   resb PAGE_SIZE
 pt_tables  resb 512 * PAGE_SIZE
-
-align 16
-stack_bottom:
-    resb 4096
-stack_top:
