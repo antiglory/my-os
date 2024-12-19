@@ -1,4 +1,4 @@
-void _start()   __attribute__((section(".text.boot"))) __attribute__((naked));
+void _kstart()   __attribute__((section(".text.boot"))) __attribute__((naked));
 void halt()     __attribute__((noreturn));
 
 extern char __stack_start[];
@@ -26,7 +26,7 @@ void kprintnf(unsigned char* str)
 }
 
 // kernel entrypoint
-void _start()
+void _kstart()
 {
     // setup stack
     asm volatile (
