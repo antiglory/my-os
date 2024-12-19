@@ -44,6 +44,7 @@ void _kstart()
 
 void main()
 {
+    // 0xffffff8000000000 - 0xffffff8000200000 [pt_ffffff8000000]
     kprintnf("Greetz! - v0.1");
 
     halt();
