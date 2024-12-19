@@ -25,7 +25,7 @@ KERNEL_LINKER = source/Linker/kernel.ld
 # compile-flags
 NASM_FLAGS = -g -f elf32
 NASM_BIN_FLAGS = -g -f bin
-KERNEL_FLAGS = -g -c -ffreestanding -fno-pie -mno-red-zone -mno-mmx -mno-sse -mno-sse2 -m64 -O2 -fno-exceptions -nostdlib
+KERNEL_FLAGS = -g -c -ffreestanding -fno-pie -mno-red-zone -mno-mmx -mno-sse -mno-sse2 -m64 -O2 -fno-exceptions -nostdlib -fno-omit-frame-pointer
 KERNEL_LINK_FLAGS = -n -T $(KERNEL_LINKER) -o $(KERNEL_OUT) -nostdlib
 
 # rule
@@ -49,7 +49,7 @@ $(PREKERNEL_OBJ): $(PREKERNEL)
 
 # prekernel linking
 $(PREKERNEL_OUT): $(PREKERNEL_OBJ)
-	$(LD) -o $@ -T $(PK_LINKER) $^ --entry=start --oformat binary -m elf_i386
+	$(LD) -o $@ -T $(PK_LINKER) $^ --entry=_pstart --oformat binary -m elf_i386
 
 # OS image creation
 $(OS_IMAGE): $(BOOTLOADER_OUT) $(PREKERNEL_OUT) $(KERNEL_OUT)
