@@ -1,7 +1,7 @@
 OUTPUT_FORMAT(binary)
-ENTRY(_start)
+ENTRY(_kstart)
 
-KERNEL_VMA = 0xFFFFFFFF80100000;
+KERNEL_VMA = 0xFFFF800000000000;
 KERNEL_LMA = 0x100000;
 
 SECTIONS
@@ -10,7 +10,7 @@ SECTIONS
 
     .start : AT(ADDR(.start))
     {
-        KEEP(*(_start))
+        KEEP(*(_kstart))
     }
 
     .text.boot : AT(ADDR(.text.boot))
@@ -37,6 +37,14 @@ SECTIONS
     {
         *(COMMON)
         *(.bss)
+    }
+
+    .stack ALIGN(4K) : AT(ADDR(.stack) - KERNEL_VMA + KERNEL_LMA)
+    {
+        . = ALIGN(16);
+        __stack_start = .;
+        . = . + 0x1000;  /* 4KB */
+        __stack_end = .;
     }
 
     /DISCARD/ :
