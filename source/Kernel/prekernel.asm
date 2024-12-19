@@ -2,7 +2,7 @@ global _pstart
 
 ; 0x1000
 _pstart:
-    ; setup page table
+    ; setup kernel PLM4 (yes, before actually loading it)
     call setup_paging
 
     ; enable PAE
@@ -102,10 +102,22 @@ KERNEL_BLOCK_COUNT equ 8
 
 [BITS 64]
 end:
+    xor rax, rax
+
+    mov ax, GDT64.data_ptr
+    mov ds, ax
+    mov es, ax
+    mov fs, ax
+    mov gs, ax
+    mov ss, ax
+
+    xor rax, rax
+
     call load_kernel
 
     mov rdi, [KERNEL_PHYSICAL_ADDRESS]
     mov rsi, [KERNEL_VIRTUAL_ADDRESS]
+
     cmp rdi, rsi
     jne .me_handler
 
@@ -129,7 +141,7 @@ load_kernel:
 
     ; select the first bus
     mov dx, 0x1F6
-    mov al, 0xE0  ; LBA mode, first drive
+    mov al, 0xE0    ; LBA mode, first drive
     out dx, al
 
     ; set block count
@@ -142,24 +154,24 @@ load_kernel:
     mov al, cl
     out dx, al
 
-    inc dx  ; 0x1F4
+    inc dx          ; 0x1F4
     mov al, ch
     out dx, al
 
-    inc dx  ; 0x1F5
+    inc dx          ; 0x1F5
     shr eax, 16
     out dx, al
 
     ; send read command
     mov dx, 0x1F7
-    mov al, 0x20  ; read blocks command
+    mov al, 0x20    ; read blocks command
     out dx, al
 
     ; wait for the disk (with timeout)
-    mov ecx, 100000  ; timeout counter
+    mov ecx, 100000 ; timeout counter
 .wait_disk:
     in al, dx
-    test al, 8  ; check if BSY (bit 7) is clear and DRQ (bit 3) is set
+    test al, 8      ; check if BSY (bit 7) is clear and DRQ (bit 3) is set
     jnz .ready
     loop .wait_disk
 
