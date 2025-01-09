@@ -1,5 +1,5 @@
 OUTPUT_FORMAT(binary)
-ENTRY(_kstart)
+ENTRY(kstart)
 
 KERNEL_VMA = 0xFFFF800000000000;
 KERNEL_LMA = 0x100000;
@@ -10,15 +10,15 @@ SECTIONS
 
     .start : AT(ADDR(.start))
     {
-        KEEP(*(_kstart))
+        KEEP(*(kstart))
     }
 
-    .text.boot : AT(ADDR(.text.boot))
+    .text.boot ALIGN(1) : AT(ADDR(.text.boot))
     {
         *(.text.boot)
     }
 
-    .text : AT(ADDR(.text))
+    .text ALIGN(1) : AT(ADDR(.text))
     {
         *(.text)
     }
