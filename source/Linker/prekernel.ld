@@ -3,12 +3,16 @@ SECTIONS
 {
     . = 0x1000;
 
-    .text : {
+    .text :
+    {
         *(.text.start)
         *(.text)
     }
 
-    .text.start : { *(.text.start) }
+    .text.start :
+    {
+        *(.text.start)
+    }
 
     . = ALIGN(512);
 
