@@ -1,4 +1,4 @@
-ENTRY(_pstart)
+ENTRY(pstart)
 SECTIONS
 {
     . = 0x1000;
