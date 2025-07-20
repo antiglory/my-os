@@ -1,19 +1,33 @@
 #ifndef IDT_H
 #define IDT_H
 
-extern void interrupt_handler0(void);
-extern void interrupt_handler1(void);
-
+/*
 void interrupt_handler0(void)
 {
-    kprintnf("trigged ISR 0\n");
+    kprintf("trigged ISR 0\n");
 }
 
 void interrupt_handler1(void)
 {
-    kprintnf("trigged ISR 1\n");
+    kprintf("trigged ISR 1\n");
+}
+*/
+
+static void gp_isr(void)
+{
+    kprintf("#GP got caught\n");
+
+    halt();
 }
 
+static void pf_isr(void)
+{
+    kprintf("#PF got caught\n");
+
+    halt();
+}
+
+/*
 static void isr0(void)
 {
     asm volatile
@@ -71,6 +85,7 @@ static void isr1(void)
         : "memory"
     );
 }
+*/
 
 struct idt_entry
 {
@@ -116,8 +131,8 @@ void idt_init(void)
 
     // 0x08 = GDT64 code selector
     // 0x8E - present | ring 0 | interrupt gate
-    idt_set_gate(0, (uint64_t)isr0, 0x08, 0x8E);
-    idt_set_gate(1, (uint64_t)isr1, 0x08, 0x8E);
+    idt_set_gate(13, (uint64_t)gp_isr, 0x08, 0x8E);
+    idt_set_gate(14, (uint64_t)pf_isr, 0x08, 0x8E);
 
     asm volatile
     (
