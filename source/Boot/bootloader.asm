@@ -20,7 +20,7 @@ _start:
 
     ; loading prekernel into block 2
     mov bx, PREKERNEL_ENTRY
-    mov dh, 3                  ; reading only 3 blocks
+    mov dh, 4                  ; reading only 4 blocks
     mov ah, 2
     mov al, dh
     mov ch, 0
@@ -52,6 +52,7 @@ _start:
 %include "source/Struct/gdt32.asm"
 
 [BITS 32]
+; 0x7c65
 protected_mode:
     mov ax, GDT32.data_ptr
     mov ds, ax
