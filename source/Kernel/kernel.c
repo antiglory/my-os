@@ -1,3 +1,4 @@
+// 0xffffff8000000000 - 0xffffff8000200000 [pt_ffffff8000000]
 #include <stdint.h>
 #include <stdarg.h>
 #include <stdlib.h>
@@ -66,10 +67,9 @@ void kstart(uint64_t* ext_pml4, uint64_t* ext_pdpt, uint64_t* ext_pd, uint64_t* 
 #include "modules/init.h"
 // #include "modules/loader.h"
 
-void init(void) // 0x10058e
+// 0xffffff800010058e
+void init(void)
 {
-    // 0xffffff8000000000 - 0xffffff8000200000 [pt_ffffff8000000]
-
     idt_init();
 
     JMP(&main);
