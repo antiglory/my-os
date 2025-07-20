@@ -1,8 +1,14 @@
-global _pstart
+global pstart
 
+global pml4_table
+global pdpt_table
+global pd_table
+global pt_tables
+
+[BITS 32]
 ; 0x1000
-_pstart:
-    ; setup kernel PLM4 (yes, before actually loading it)
+pstart:
+    ; setup kernel PLM4
     call setup_paging
 
     ; enable PAE
@@ -72,7 +78,7 @@ setup_paging:
 
     ; PT entries for kernel space
     mov edi, pt_tables
-    mov eax, KERNEL_PHYSICAL_ADDRESS 
+    mov eax, KERNEL_PHYSICAL_ENTRY
     mov ecx, 512        
 .setup_pt:
     or eax, PTE_PRESENT | PTE_WRITABLE
@@ -94,13 +100,14 @@ setup_paging:
 
     ret
 
-KERNEL_PHYSICAL_ADDRESS equ 0x100000
-KERNEL_VIRTUAL_ADDRESS  equ 0xFFFF800000100000
+KERNEL_PHYSICAL_ENTRY equ 0x100000
+KERNEL_VIRTUAL_ENTRY  equ 0xFFFF800000100000
 
 KERNEL_BLOCK_START equ 8
-KERNEL_BLOCK_COUNT equ 8
+KERNEL_BLOCK_COUNT equ 16
 
 [BITS 64]
+; 0x1149
 end:
     xor rax, rax
 
@@ -115,79 +122,92 @@ end:
 
     call load_kernel
 
-    mov rdi, [KERNEL_PHYSICAL_ADDRESS]
-    mov rsi, [KERNEL_VIRTUAL_ADDRESS]
+    mov rdi, [KERNEL_PHYSICAL_ENTRY]
+    mov rsi, [KERNEL_VIRTUAL_ENTRY]
 
     cmp rdi, rsi
     jne .me_handler
 
     xor rsi, rsi
     xor rdi, rdi
+
+    ; passing PLM4 pointers to kernel
+    mov rdi, pml4_table
+    mov rsi, pdpt_table
+    mov rdx, pd_table
+    mov rcx, pt_tables
     
-    jmp KERNEL_VIRTUAL_ADDRESS
+    jmp KERNEL_VIRTUAL_ENTRY
 .me_handler:
+    ; if not equal, mapping failed
     mov rsi, MAP_ERROR_MSG
     call pkprintnf
 
     hlt
 
 load_kernel:
-    mov rdi, KERNEL_PHYSICAL_ADDRESS  ; target address
-    mov rax, KERNEL_BLOCK_START       ; starting block
-    mov rcx, KERNEL_BLOCK_COUNT       ; block num to read
+    mov rdi, KERNEL_PHYSICAL_ENTRY
+    mov rax, KERNEL_BLOCK_START
+    mov rcx, KERNEL_BLOCK_COUNT
 .read_loop:
     push rcx
     push rax
 
-    ; select the first bus
+    ; copy LBA to EBX and extract bits
+    mov ebx, eax    ; EBX = current LBA (32 bits)
+
+    ; set 0x1F6 (drive/head)
     mov dx, 0x1F6
-    mov al, 0xE0    ; LBA mode, first drive
+
+    ; calculate LBA (EBX) bits 24-27 manually
+    mov eax, ebx    ; copy LBA to EAX
+    shr eax, 24     ; shift EAX in 24 bits to right (bits 24-27 in AL)
+    and al, 0x0F    ; applies the 0x0F mask to isolate the 4 bits
+    or al, 0xE0     ; combine with 0xE0 (drive master + LBA mode)
     out dx, al
 
-    ; set block count
+    ; set 0x1F2 (block count)
     mov dx, 0x1F2
-    mov al, 1
+    mov al, 1       ; 1 block once
     out dx, al
 
-    ; send LBA
+    ; set 0x1F3 (LBA low: bits 0-7)
     mov dx, 0x1F3
-    mov al, cl
+    mov al, bl      ; BL = bits 0-7 of LBA
     out dx, al
 
-    inc dx          ; 0x1F4
-    mov al, ch
+    ; set 0x1F4 (LBA mid: bits 8-15)
+    mov dx, 0x1F4
+    mov al, bh      ; BH = bits 8-15 of LBA
     out dx, al
 
-    inc dx          ; 0x1F5
-    shr eax, 16
+    ; set 0x1F5 (LBA high: bits 16-23)
+    mov dx, 0x1F5
+    shr ebx, 16     ; EBX >> 16: bits 16-23 in BL
+    mov al, bl
     out dx, al
 
-    ; send read command
+    ; read
     mov dx, 0x1F7
-    mov al, 0x20    ; read blocks command
+    mov al, 0x20
     out dx, al
 
-    ; wait for the disk (with timeout)
-    mov ecx, 100000 ; timeout counter
+    mov ecx, 100000
 .wait_disk:
     in al, dx
-    test al, 8      ; check if BSY (bit 7) is clear and DRQ (bit 3) is set
-    jnz .ready
-    loop .wait_disk
-
-    ; if we get here, weve timed out
-    mov rdi, DISK_ERROR_MSG
-    call pkprintnf
-
-    hlt
+    test al, 0x80       ; check BSY bit (bit 7)
+    jnz .wait_disk      ; wait while busy
+    test al, 0x08       ; check DRQ bit (bit 3)
+    jz .wait_disk       ; wait until data is ready
 .ready:
-    ; read 256 words
+    ; read 512 bytes (256 words) of the block
     mov ecx, 256
     mov dx, 0x1F0
-    rep insw
+    rep insw            ; read to [RDI]
 
+    ; restore LBA and counter, increments LBA
     pop rax
-    inc eax
+    inc rax
     pop rcx
     loop .read_loop
 
@@ -212,14 +232,14 @@ pkprintnf:
 .e:
     ret
 
-DISK_ERROR_MSG  db "[ ERROR ] disk read for kernel timeout!", 0x0
-MAP_ERROR_MSG   db "[ ERROR ] failed to setup kernel PLM4!", 0x0
+DISK_ERROR_MSG   db "[ ERROR ] disk read for kernel loading timeout!",   0x0
+MAP_ERROR_MSG    db "[ ERROR ] failed to setup kernel PLM4!",            0x0
 
-PAGE_SIZE         equ 4096
-ENTRIES_PER_TABLE equ 512
-PTE_PRESENT       equ 1
-PTE_WRITABLE      equ 2
-PTE_USER          equ 4
+PAGE_SIZE             equ 4096
+ENTRIES_PER_TABLE     equ 512
+PTE_PRESENT           equ 1
+PTE_WRITABLE          equ 2
+PTE_USER              equ 4
 
 align 4096
 pml4_table resb PAGE_SIZE
