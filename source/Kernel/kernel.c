@@ -61,7 +61,7 @@ void kstart(uint64_t* ext_pml4, uint64_t* ext_pdpt, uint64_t* ext_pd, uint64_t* 
     __builtin_unreachable();
 }
 
-#include "modules/wrappers.h"
+#include "modules/wrapper.h"
 #include "modules/io.h"
 #include "modules/init.h"
 // #include "modules/loader.h"
