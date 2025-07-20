@@ -1,51 +1,63 @@
 OUTPUT_FORMAT(binary)
 ENTRY(kstart)
 
-KERNEL_VMA = 0xFFFF800000000000;
+KERNEL_VMA = 0xFFFFFF8000100000;
 KERNEL_LMA = 0x100000;
 
 SECTIONS
 {
-    . = KERNEL_LMA;
+    . = KERNEL_VMA;
 
-    .start : AT(ADDR(.start))
+    .text.boot : AT(KERNEL_VMA)
     {
         KEEP(*(kstart))
-    }
-
-    .text.boot ALIGN(1) : AT(ADDR(.text.boot))
-    {
         *(.text.boot)
     }
 
-    .text ALIGN(1) : AT(ADDR(.text))
+    .text ALIGN(8) : AT(ADDR(.text))
     {
         *(.text)
     }
 
-    .rodata ALIGN(4K) : AT(ADDR(.rodata) - KERNEL_VMA + KERNEL_LMA)
+    .rodata ALIGN(4K) : AT(ADDR(.rodata))
     {
         *(.rodata)
     }
 
-    .data ALIGN(4K) : AT(ADDR(.data) - KERNEL_VMA + KERNEL_LMA)
+    .data ALIGN(4K) : AT(ADDR(.data))
     {
         *(.data)
     }
 
-    .bss ALIGN(4K) : AT(ADDR(.bss) - KERNEL_VMA + KERNEL_LMA)
+    .bss ALIGN(4K) : AT(ADDR(.bss))
     {
         *(COMMON)
         *(.bss)
     }
 
-    .stack ALIGN(4K) : AT(ADDR(.stack) - KERNEL_VMA + KERNEL_LMA)
+    .stack ALIGN(4K) : AT(ADDR(.stack))
     {
         . = ALIGN(16);
         __stack_start = .;
-        . = . + 0x1000;  /* 4KB */
+        . = . + 0x1000;
         __stack_end = .;
     }
+
+    /* exporting for kernel.c visibility */
+    _kernel_text_start     = ADDR(.text);
+    _kernel_text_end       = ADDR(.rodata);
+
+    _kernel_rodata_start   = ADDR(.rodata);
+    _kernel_rodata_end     = ADDR(.data);
+
+    _kernel_data_start     = ADDR(.data);
+    _kernel_data_end       = ADDR(.bss);
+
+    _kernel_bss_start      = ADDR(.bss);
+    _kernel_bss_end        = ADDR(.stack);
+
+    _kernel_stack_start    = __stack_start;
+    _kernel_stack_end      = __stack_end;
 
     /DISCARD/ :
     {
