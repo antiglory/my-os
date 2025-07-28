@@ -14,7 +14,7 @@ SECTIONS
         *(.text.boot)
     }
 
-    .text ALIGN(8) : AT(ADDR(.text))
+    .text ALIGN(0x100) : AT(ADDR(.text))
     {
         *(.text)
     }
@@ -27,6 +27,7 @@ SECTIONS
     .data ALIGN(4K) : AT(ADDR(.data))
     {
         *(.data)
+        . = . + 0x1000;
     }
 
     .bss ALIGN(4K) : AT(ADDR(.bss))
@@ -44,20 +45,26 @@ SECTIONS
     }
 
     /* exporting for kernel.c visibility */
-    _kernel_text_start     = ADDR(.text);
-    _kernel_text_end       = ADDR(.rodata);
+    _kernel_text_boot_start = ADDR(.text.boot);
+    _kernel_text_boot_end   = ADDR(.text);
 
-    _kernel_rodata_start   = ADDR(.rodata);
-    _kernel_rodata_end     = ADDR(.data);
+    _kernel_text_start      = ADDR(.text);
+    _kernel_text_end        = ADDR(.rodata);
 
-    _kernel_data_start     = ADDR(.data);
-    _kernel_data_end       = ADDR(.bss);
+    _kernel_rodata_start    = ADDR(.rodata);
+    _kernel_rodata_end      = ADDR(.data);
 
-    _kernel_bss_start      = ADDR(.bss);
-    _kernel_bss_end        = ADDR(.stack);
+    _kernel_data_start      = ADDR(.data);
+    _kernel_data_end        = ADDR(.bss);
 
-    _kernel_stack_start    = __stack_start;
-    _kernel_stack_end      = __stack_end;
+    _kernel_bss_start       = ADDR(.bss);
+    _kernel_bss_end         = ADDR(.stack);
+
+    _kernel_stack_start     = __stack_start;
+    _kernel_stack_end       = __stack_end;
+
+    _kernel_vma             = KERNEL_VMA;
+    _kernel_lma             = KERNEL_LMA;
 
     /DISCARD/ :
     {
