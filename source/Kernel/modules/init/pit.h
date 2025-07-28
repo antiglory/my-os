@@ -1,7 +1,7 @@
 #ifndef PIT_H
 #define PIT_H
 
-#define PIT_HZ             100 // 100 Hz = 10 ms for tick
+#define PIT_HZ             100 // 100 Hz = 10 ms per tick
 #define PIT_BASE_FREQUENCY 1193182
 
 void init_pit(void)
