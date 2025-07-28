@@ -1,6 +1,9 @@
 #ifndef TTY_H
 #define TTY_H
 
+#define VGA_WIDTH  80
+#define VGA_HEIGHT 25
+
 #define STDIN_BUFF_SIZE VGA_HEIGHT * VGA_WIDTH
 
 unsigned char stdin_buffer[STDIN_BUFF_SIZE] = {0};
@@ -52,9 +55,6 @@ void gets(unsigned char* str)
 
     str[i] = '\0';
 }
-
-#define VGA_WIDTH  80
-#define VGA_HEIGHT 25
 
 static int32_t current_x = 0;
 static int32_t current_y = 0;
