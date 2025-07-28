@@ -1,5 +1,6 @@
 [BITS 16]
 [ORG 0x7C00]
+; a disk block -> 512 bytes
 
 PREKERNEL_ENTRY equ 0x1000
 
@@ -46,7 +47,7 @@ _start:
     or eax, 0x1
     mov cr0, eax
 
-    ; jump to protected mode
+    ; far jump to protected mode
     jmp GDT32.code_ptr:protected_mode
 
 %include "source/Struct/gdt32.asm"
