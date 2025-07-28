@@ -2,23 +2,15 @@
 #include <stdint.h>
 #include <stdarg.h>
 #include <stdlib.h>
+#include <string.h>
 #include <stdbool.h>
 #include <stddef.h>
 
 #include "modules/macro.h"
+#include "modules/prototype.h"
 
-BTEXT ALIGNED void kstart(uint64_t* pml4, uint64_t* pdpt, uint64_t* pd, uint64_t* pt)  __attribute__((naked));
-TEXT  ALIGNED void setup_kernel_paging(void);
-TEXT  ALIGNED void init(void);
-TEXT  ALIGNED void main(void);
-
-extern char __stack_start[];
-extern char __stack_end[];
-
-uint64_t* pt_tables;
-uint64_t* pd_table;
-uint64_t* pdpt_table;
-uint64_t* pml4_table;
+// self
+volatile uint64_t cpu_ticks = 0;
 
 // kernel entrypoint
 void kstart(uint64_t* ext_pml4, uint64_t* ext_pdpt, uint64_t* ext_pd, uint64_t* ext_pt)
@@ -48,12 +40,14 @@ void kstart(uint64_t* ext_pml4, uint64_t* ext_pdpt, uint64_t* ext_pd, uint64_t* 
         : "rax", "memory"
     );
 
-    setup_kernel_paging();
+    init_idt();
+    init_map_kernel_sections();
 
+    // RIP cant handle canonical address yet -> use trampolines (avoid RIP + offset)
     asm volatile
     (
         "movabs %[target], %%rax\n\t"
-        "jmp *%%rax\n\t"
+        "jmpq *%%rax\n\t"
         :
         : [target] "i"(init)
         : "rax"
@@ -63,21 +57,33 @@ void kstart(uint64_t* ext_pml4, uint64_t* ext_pdpt, uint64_t* ext_pd, uint64_t* 
 }
 
 #include "modules/wrapper.h"
-#include "modules/io.h"
+#include "modules/tty.h"
+
+__attribute__((noreturn)) void panic(void)
+{
+    asm volatile("cli\n\t");
+
+    kprintf("kernel panic!\n");
+
+    halt();
+}
+
 #include "modules/init.h"
 // #include "modules/loader.h"
 
-// 0xffffff800010058e
-void init(void)
+void sleep(uint64_t ms)
 {
-    idt_init();
+    uint64_t target = cpu_ticks + ms / 10;
 
-    JMP(&main);
+    while (cpu_ticks < target)
+    {
+        asm volatile("hlt");
+    }
 }
 
 void main(void)
 {
-    kprintf("Greetz! - v0.1\n");
+    kprintf("\nv0 is alive!\n");
 
     halt();
 }
