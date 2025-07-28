@@ -8,9 +8,6 @@ global pt_tables
 [BITS 32]
 ; 0x1000
 pstart:
-    ; setup kernel PLM4
-    call setup_paging
-
     ; enable PAE
     mov eax, cr4
     or eax, 1 << 5
@@ -26,6 +23,8 @@ pstart:
     and eax, 0x9FFFFFFF
     mov cr0, eax
 
+    call setup_paging
+
     ; set CR3 to point to the PML4 table
     mov eax, pml4_table
     mov cr3, eax
@@ -37,35 +36,37 @@ pstart:
     wrmsr
 
     ; enable paging and load GDT
-    mov eax, cr0
-    or eax, 1 << 31
-    mov cr0, eax
-
     lgdt [GDT64.descriptor]
+
+    mov eax, cr0
+    or eax, 1               ; PE
+    or eax, 1 << 31         ; PG
+    mov cr0, eax
 
     jmp GDT64.code_ptr:end
 
 %include "source/Struct/gdt64.asm"
 
 setup_paging:
+    ; VA == PA; 0xffffff8000100000 -> 0x0000000000100000
     ; PML4 entries
     mov edi, pml4_table
     mov eax, pdpt_table
     or eax, PTE_PRESENT | PTE_WRITABLE
-    mov [edi], eax                    ; entry 0 - lower addresses
+    mov [edi], eax                     ; entry 0 - lower addresses
     
-    mov edi, pml4_table + (511 * 8)   ; entry 511 - high addresses
+    mov edi, pml4_table + (511 * 8)    ; entry 511 - high addresses
     mov eax, pdpt_table
     or eax, PTE_PRESENT | PTE_WRITABLE
     mov [edi], eax
 
     ; PDPT entries
-    mov edi, pdpt_table              ; entry 0 - lower addresses
+    mov edi, pdpt_table                ; entry 0 - lower addresses
     mov eax, pd_table
     or eax, PTE_PRESENT | PTE_WRITABLE
     mov [edi], eax      
 
-    mov edi, pdpt_table + (511 * 8)  ; entry 511 - high addresses
+    mov edi, pdpt_table + (511 * 8)    ; entry 511 - high addresses
     mov eax, pd_table
     or eax, PTE_PRESENT | PTE_WRITABLE
     mov [edi], eax
@@ -101,13 +102,12 @@ setup_paging:
     ret
 
 KERNEL_PHYSICAL_ENTRY equ 0x100000
-KERNEL_VIRTUAL_ENTRY  equ 0xFFFF800000100000
+KERNEL_VIRTUAL_ENTRY  equ 0xFFFFFF8000100000
 
 KERNEL_BLOCK_START equ 8
 KERNEL_BLOCK_COUNT equ 16
 
 [BITS 64]
-; 0x1149
 end:
     xor rax, rax
 
@@ -118,8 +118,6 @@ end:
     mov gs, ax
     mov ss, ax
 
-    xor rax, rax
-
     call load_kernel
 
     mov rdi, [KERNEL_PHYSICAL_ENTRY]
@@ -128,10 +126,7 @@ end:
     cmp rdi, rsi
     jne .me_handler
 
-    xor rsi, rsi
-    xor rdi, rdi
-
-    ; passing PLM4 pointers to kernel
+    ; passing PML4 pointers to kernel
     mov rdi, pml4_table
     mov rsi, pdpt_table
     mov rdx, pd_table
@@ -139,14 +134,14 @@ end:
     
     jmp KERNEL_VIRTUAL_ENTRY
 .me_handler:
-    ; if not equal, mapping failed
+    ; if not equal -> mapping failed
     mov rsi, MAP_ERROR_MSG
     call pkprintnf
 
     hlt
 
 load_kernel:
-    mov rdi, KERNEL_PHYSICAL_ENTRY
+    mov rdi, KERNEL_VIRTUAL_ENTRY
     mov rax, KERNEL_BLOCK_START
     mov rcx, KERNEL_BLOCK_COUNT
 .read_loop:
@@ -166,22 +161,22 @@ load_kernel:
     or al, 0xE0     ; combine with 0xE0 (drive master + LBA mode)
     out dx, al
 
-    ; set 0x1F2 (block count)
+    ; set 0x1F2 -> block count
     mov dx, 0x1F2
     mov al, 1       ; 1 block once
     out dx, al
 
-    ; set 0x1F3 (LBA low: bits 0-7)
+    ; 0x1F3 -> LBA low: bits 0-7
     mov dx, 0x1F3
     mov al, bl      ; BL = bits 0-7 of LBA
     out dx, al
 
-    ; set 0x1F4 (LBA mid: bits 8-15)
+    ; set 0x1F4 -> LBA mid: bits 8-15
     mov dx, 0x1F4
     mov al, bh      ; BH = bits 8-15 of LBA
     out dx, al
 
-    ; set 0x1F5 (LBA high: bits 16-23)
+    ; set 0x1F5 -> LBA high: bits 16-23
     mov dx, 0x1F5
     shr ebx, 16     ; EBX >> 16: bits 16-23 in BL
     mov al, bl
@@ -195,8 +190,10 @@ load_kernel:
     mov ecx, 100000
 .wait_disk:
     in al, dx
+
     test al, 0x80       ; check BSY bit (bit 7)
     jnz .wait_disk      ; wait while busy
+
     test al, 0x08       ; check DRQ bit (bit 3)
     jz .wait_disk       ; wait until data is ready
 .ready:
@@ -209,6 +206,7 @@ load_kernel:
     pop rax
     inc rax
     pop rcx
+
     loop .read_loop
 
     ret
@@ -232,14 +230,13 @@ pkprintnf:
 .e:
     ret
 
-DISK_ERROR_MSG   db "[ ERROR ] disk read for kernel loading timeout!",   0x0
-MAP_ERROR_MSG    db "[ ERROR ] failed to setup kernel PLM4!",            0x0
+DISK_ERROR_MSG   db "[ PANIC ] disk read for kernel timeout!",   0x0
+MAP_ERROR_MSG    db "[ PANIC ] failed to setup kernel PML4!",    0x0
 
 PAGE_SIZE             equ 4096
 ENTRIES_PER_TABLE     equ 512
 PTE_PRESENT           equ 1
 PTE_WRITABLE          equ 2
-PTE_USER              equ 4
 
 align 4096
 pml4_table resb PAGE_SIZE
